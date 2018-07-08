@@ -6,15 +6,23 @@ import android.graphics.Paint
 import android.graphics.Typeface
 import android.graphics.drawable.Drawable
 import android.os.Build
+import android.os.Bundle
 import android.support.design.widget.BottomNavigationView
+import android.support.v4.app.Fragment
 import android.support.v7.widget.RecyclerView
 import android.text.Html
 import android.text.InputType
 import android.view.Gravity
+import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 import org.jetbrains.anko.*
+import org.jetbrains.anko.support.v4.onUiThread
+import java.io.BufferedInputStream
+import java.io.ByteArrayOutputStream
+import java.net.HttpURLConnection
+import java.net.URL
 
 interface KoatlContext<out T> : AnkoContext<T> {
     val Int.dp: Int get() = ctx.dip(this)
@@ -370,6 +378,15 @@ inline fun <T> koatlContext (
 }
 
 
+fun ViewGroup.createView(init: KoatlContext<ViewGroup>.() -> Unit)
+= KoatlContextImpl(context, this, false).apply(init).view
+
+
+fun AlertBuilder<*>.customKoatlView(dsl: KoatlContext<Context>.() -> Unit) {
+    customView = ctx.KUI(dsl)
+}
+
+
 fun <E> RecyclerView.forEachOf (
         items: List<E>,
         handleLayoutParams: ViewGroup.LayoutParams.() -> Unit = row,
@@ -415,3 +432,55 @@ inline val column: ViewGroup.LayoutParams.() -> Unit
     get() = { width = wrapContent; height = matchParent }
 inline val dominant: ViewGroup.LayoutParams.() -> Unit
     get() = { width = matchParent; height = matchParent }
+
+
+abstract class KoatlFragment : Fragment() {
+    fun Fragment.KUI(init: KoatlContext<Context>.() -> Unit)
+            = createKoatlContext(context!!, init)
+
+    abstract fun markup(): View
+
+    override fun onCreateView(i: LayoutInflater, vg: ViewGroup?, b: Bundle?) = markup()
+}
+
+
+fun BufferedInputStream.getString() : String {
+    val bos = ByteArrayOutputStream()
+    var i = this.read()
+    while (i != -1) {
+        bos.write(i)
+        i = this.read()
+    }
+    return bos.toString()
+}
+
+
+interface LoadableApp {
+    val baseUrl: String
+}
+
+
+abstract class LoadableFragment(baseUrl: String? = null, val app: LoadableApp? = null): KoatlFragment() {
+    private val baseUrl = when {
+        baseUrl != null -> baseUrl
+        app != null -> app.baseUrl
+        else -> ""
+    }
+
+    fun String.httpGet(onPostExecute: (String) -> Unit, onError: (Exception) -> Unit, timeout: Int = 5000) {
+        doAsync {
+            with(URL(baseUrl + this@httpGet).openConnection() as HttpURLConnection) {
+                requestMethod = "GET"
+                connectTimeout = timeout
+                try {
+                    val result = BufferedInputStream(inputStream).getString()
+                    onUiThread { onPostExecute(result) }
+                } catch (e: Exception) {
+                    onError(e)
+                } finally {
+                    disconnect()
+                }
+            }
+        }
+    }
+}
