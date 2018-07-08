@@ -7,15 +7,13 @@ import android.graphics.Typeface
 import android.graphics.drawable.Drawable
 import android.os.Build
 import android.support.design.widget.BottomNavigationView
+import android.support.v7.widget.RecyclerView
 import android.text.Html
 import android.text.InputType
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.widget.CompoundButton
-import android.widget.TableLayout
-import android.widget.TableRow
-import android.widget.TextView
+import android.widget.*
 import org.jetbrains.anko.*
 
 interface KoatlContext<out T> : AnkoContext<T> {
@@ -370,3 +368,50 @@ inline fun <T> koatlContext (
     (dsl as KoatlContext<T>).init()
     return dsl.view
 }
+
+
+fun <E> RecyclerView.forEachOf (
+        items: List<E>,
+        handleLayoutParams: ViewGroup.LayoutParams.() -> Unit = row,
+        holderView: KoatlContext<ViewGroup>.(E, Int) -> Unit
+): RecyclerView {
+    adapter = object : RecyclerView.Adapter<KoatlViewHolder<E>>() {
+        override fun getItemCount() = items.size
+
+        override fun onCreateViewHolder(parent: ViewGroup, itemViewType: Int)
+                = KoatlViewHolder(FrameLayout(parent.context), parent, holderView, handleLayoutParams)
+
+        override fun onBindViewHolder(holder: KoatlViewHolder<E>, position: Int)
+                = holder.bind(items[holder.adapterPosition], holder.adapterPosition)
+    }
+    return this
+}
+
+
+class KoatlViewHolder<in E> (
+        val vItem: FrameLayout,
+        private val parent: ViewGroup,
+        private val holderViewMarkup: KoatlContext<ViewGroup>.(E, Int) -> Unit,
+        handleItemViewLayoutParams: ViewGroup.LayoutParams.() -> Unit
+): RecyclerView.ViewHolder(vItem) {
+    init {
+        vItem.layoutParams = ViewGroup.LayoutParams(wrapContent, wrapContent)
+        vItem.layoutParams.handleItemViewLayoutParams()
+    }
+
+    fun bind(item: E, position: Int) {
+        val koatl = KoatlContextImpl(parent.context, parent, false)
+                .apply { holderViewMarkup(item, position) }
+        vItem.addView(koatl.view)
+    }
+}
+
+
+inline val submissive: ViewGroup.LayoutParams.() -> Unit
+    get() = { width = wrapContent; height = wrapContent }
+inline val row: ViewGroup.LayoutParams.() -> Unit
+    get() = { width = matchParent; height = wrapContent }
+inline val column: ViewGroup.LayoutParams.() -> Unit
+    get() = { width = wrapContent; height = matchParent }
+inline val dominant: ViewGroup.LayoutParams.() -> Unit
+    get() = { width = matchParent; height = matchParent }
