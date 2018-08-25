@@ -1,5 +1,6 @@
 package com.brotandos.koatlcontextlib
 
+import android.app.Activity
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Paint
@@ -354,6 +355,8 @@ open class KoatlContextImpl<T> (
 inline fun Context.KUI(init: KoatlContext<Context>.() -> Unit): android.view.View =
         createKoatlContext(this, init)
 
+inline fun Activity.KUI(init: KoatlContext<Context>.() -> Unit): android.view.View =
+        createKoatlContext(this, init, true)
 
 inline fun <T> createKoatlContext (
         ctx: Context,
@@ -364,7 +367,6 @@ inline fun <T> createKoatlContext (
     (dsl as KoatlContext<T>).init()
     return dsl.view
 }
-
 
 inline fun <T> koatlContext (
         ctx: Context,
@@ -377,15 +379,12 @@ inline fun <T> koatlContext (
     return dsl.view
 }
 
-
 fun ViewGroup.createView(init: KoatlContext<ViewGroup>.() -> Unit)
 = KoatlContextImpl(context, this, false).apply(init).view
-
 
 fun AlertBuilder<*>.customKoatlView(dsl: KoatlContext<Context>.() -> Unit) {
     customView = ctx.KUI(dsl)
 }
-
 
 fun <E> RecyclerView.forEachOf (
         items: List<E>,
@@ -403,7 +402,6 @@ fun <E> RecyclerView.forEachOf (
     }
     return this
 }
-
 
 class KoatlViewHolder<in E> (
         val vItem: FrameLayout,
@@ -467,9 +465,10 @@ abstract class LoadableFragment(baseUrl: String? = null, val app: LoadableApp? =
         else -> ""
     }
 
-    fun String.httpGet(onPostExecute: (String) -> Unit, onError: (Exception) -> Unit, timeout: Int = 5000) {
+    fun String.httpGet(onPostExecute: (String) -> Unit, onError: (java.lang.Exception) -> Unit, timeout: Int = 5000) {
         doAsync {
-            with(URL(baseUrl + this@httpGet).openConnection() as HttpURLConnection) {
+            val url = URL(baseUrl + this@httpGet)
+            with(url.openConnection() as HttpURLConnection) {
                 requestMethod = "GET"
                 connectTimeout = timeout
                 try {
