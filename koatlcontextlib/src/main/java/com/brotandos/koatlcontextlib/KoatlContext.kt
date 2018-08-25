@@ -2,6 +2,7 @@ package com.brotandos.koatlcontextlib
 
 import android.app.Activity
 import android.content.Context
+import android.content.res.Resources
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Typeface
@@ -343,8 +344,15 @@ interface KoatlContext<out T> : AnkoContext<T> {
         dsl.init()
         return dsl
     }
-
 }
+
+val density: Float get() = Resources.getSystem().displayMetrics.density
+
+val scaledDensity: Float get() = Resources.getSystem().displayMetrics.scaledDensity
+
+val Int.dip: Int get() = (this * density).toInt()
+
+val Float.sip: Float get() = this * scaledDensity
 
 open class KoatlContextImpl<T> (
         override val ctx: Context,
