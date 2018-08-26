@@ -350,9 +350,9 @@ val density: Float get() = Resources.getSystem().displayMetrics.density
 
 val scaledDensity: Float get() = Resources.getSystem().displayMetrics.scaledDensity
 
-val Int.dip: Int get() = (this * density).toInt()
+fun Int.toDp(): Int = (this * density).toInt()
 
-val Float.sip: Float get() = this * scaledDensity
+fun Float.toSp(): Float = this * scaledDensity
 
 open class KoatlContextImpl<T> (
         override val ctx: Context,
