@@ -20,7 +20,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 import org.jetbrains.anko.*
-import org.jetbrains.anko.support.v4.onUiThread
 import java.io.BufferedInputStream
 import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
@@ -466,7 +465,10 @@ interface LoadableApp {
 }
 
 
-abstract class LoadableFragment(baseUrl: String? = null, val app: LoadableApp? = null): KoatlFragment() {
+abstract class LoadableInteractor(private val getContext: () -> Context,
+                                  baseUrl: String? = null,
+                                  val app: LoadableApp? = null) {
+
     private val baseUrl = when {
         baseUrl != null -> baseUrl
         app != null -> app.baseUrl
@@ -481,7 +483,7 @@ abstract class LoadableFragment(baseUrl: String? = null, val app: LoadableApp? =
                 connectTimeout = timeout
                 try {
                     val result = BufferedInputStream(inputStream).getString()
-                    onUiThread { onPostExecute(result) }
+                    getContext().runOnUiThread { onPostExecute(result) }
                 } catch (e: Exception) {
                     onError(e)
                 } finally {
