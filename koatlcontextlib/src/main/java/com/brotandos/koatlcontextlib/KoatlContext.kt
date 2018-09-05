@@ -20,10 +20,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 import org.jetbrains.anko.*
-import java.io.BufferedInputStream
-import java.io.ByteArrayOutputStream
-import java.net.HttpURLConnection
-import java.net.URL
 
 interface KoatlContext<out T> : AnkoContext<T> {
     val Int.dp: Int get() = ctx.dip(this)
@@ -100,9 +96,6 @@ interface KoatlContext<out T> : AnkoContext<T> {
         backgroundColor = color
     }
 
-    /**
-     * Listeners setting functions
-     * */
     operator fun View.OnClickListener.unaryPlus(): View.() -> Unit = {
         setOnClickListener(this@unaryPlus)
     }
@@ -191,7 +184,6 @@ interface KoatlContext<out T> : AnkoContext<T> {
         weightSum = this@asWeightSum
     }
 
-    // TextView extensions
     val underlined: TextView.() -> Unit get() = {
         paintFlags = Paint.UNDERLINE_TEXT_FLAG
     }
@@ -292,9 +284,11 @@ interface KoatlContext<out T> : AnkoContext<T> {
         setTextIsSelectable(true)
     }
 
-    val String.html: CharSequence get()
-    =   if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) Html.fromHtml(this)
-        else Html.fromHtml(this, Html.FROM_HTML_MODE_COMPACT)
+    val String.html: CharSequence get() =
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N)
+            Html.fromHtml(this)
+        else
+            Html.fromHtml(this, Html.FROM_HTML_MODE_COMPACT)
 
     fun text(color: Int): TextView.() -> Unit = {
         textColor = color
@@ -386,8 +380,8 @@ inline fun <T> koatlContext (
     return dsl.view
 }
 
-fun ViewGroup.createView(init: KoatlContext<ViewGroup>.() -> Unit)
-= KoatlContextImpl(context, this, false).apply(init).view
+fun ViewGroup.createView(init: KoatlContext<ViewGroup>.() -> Unit) =
+        KoatlContextImpl(context, this, false).apply(init).view
 
 fun AlertBuilder<*>.customKoatlView(dsl: KoatlContext<Context>.() -> Unit) {
     customView = ctx.KUI(dsl)
@@ -401,11 +395,11 @@ fun <E> RecyclerView.forEachOf (
     adapter = object : RecyclerView.Adapter<KoatlViewHolder<E>>() {
         override fun getItemCount() = items.size
 
-        override fun onCreateViewHolder(parent: ViewGroup, itemViewType: Int)
-                = KoatlViewHolder(FrameLayout(parent.context), parent, holderView, handleLayoutParams)
+        override fun onCreateViewHolder(parent: ViewGroup, itemViewType: Int) =
+                KoatlViewHolder(FrameLayout(parent.context), parent, holderView, handleLayoutParams)
 
-        override fun onBindViewHolder(holder: KoatlViewHolder<E>, position: Int)
-                = holder.bind(items[holder.adapterPosition], holder.adapterPosition)
+        override fun onBindViewHolder(holder: KoatlViewHolder<E>, position: Int) =
+                holder.bind(items[holder.adapterPosition], holder.adapterPosition)
     }
     return this
 }
@@ -446,50 +440,4 @@ abstract class KoatlFragment : Fragment() {
     abstract fun markup(): View
 
     override fun onCreateView(i: LayoutInflater, vg: ViewGroup?, b: Bundle?) = markup()
-}
-
-
-fun BufferedInputStream.getString() : String {
-    val bos = ByteArrayOutputStream()
-    var i = this.read()
-    while (i != -1) {
-        bos.write(i)
-        i = this.read()
-    }
-    return bos.toString()
-}
-
-
-interface LoadableApp {
-    val baseUrl: String
-}
-
-
-abstract class LoadableInteractor(private val getContext: () -> Context,
-                                  baseUrl: String? = null,
-                                  val app: LoadableApp? = null) {
-
-    private val baseUrl = when {
-        baseUrl != null -> baseUrl
-        app != null -> app.baseUrl
-        else -> ""
-    }
-
-    fun String.httpGet(onPostExecute: (String) -> Unit, onError: (java.lang.Exception) -> Unit, timeout: Int = 5000) {
-        doAsync {
-            val url = URL(baseUrl + this@httpGet)
-            with(url.openConnection() as HttpURLConnection) {
-                requestMethod = "GET"
-                connectTimeout = timeout
-                try {
-                    val result = BufferedInputStream(inputStream).getString()
-                    getContext().runOnUiThread { onPostExecute(result) }
-                } catch (e: Exception) {
-                    onError(e)
-                } finally {
-                    disconnect()
-                }
-            }
-        }
-    }
 }
